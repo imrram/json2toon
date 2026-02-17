@@ -1,0 +1,63 @@
+import json
+import os
+
+def json_to_toon_optimized(data, indent=0):
+    spacer = "  " * indent
+    
+    if isinstance(data, dict):
+        lines = []
+        for key, value in data.items():
+            # 1. Handle List of Objects (Tables)
+            if isinstance(value, list) and value and all(isinstance(i, dict) for i in value):
+                keys = list(value[0].keys())
+                header = ",".join(keys)
+                lines.append(f"{spacer}{key}[{len(value)}]{{{header}}}:")
+                for item in value:
+                    # Format values: lowercase for booleans, string for others
+                    vals = []
+                    for k in keys:
+                        v = item.get(k, "")
+                        if isinstance(v, bool):
+                            vals.append(str(v).lower())
+                        else:
+                            vals.append(str(v))
+                    lines.append(f"{spacer}  {','.join(vals)}")
+            
+            # 2. Handle Simple Lists (e.g., friends[3]: ana,luis,sam)
+            elif isinstance(value, list):
+                list_str = ",".join(map(str, value))
+                lines.append(f"{spacer}{key}[{len(value)}]: {list_str}")
+            
+            # 3. Handle Nested Dictionaries
+            elif isinstance(value, dict):
+                lines.append(f"{spacer}{key}:")
+                lines.append(json_to_toon_optimized(value, indent + 1))
+            
+            # 4. Handle Simple Key-Value Pairs
+            else:
+                val = str(value).lower() if isinstance(value, bool) else value
+                lines.append(f"{spacer}{key}: {val}")
+        return "\n".join(lines)
+    
+    return str(data)
+
+def process_files(input_path="input.json", output_path="output.toon"):
+    if not os.path.exists(input_path):
+        print(f"Error: {input_path} not found.")
+        return
+
+    with open(input_path, "r") as f:
+        try:
+            data = json.load(f)
+            toon_output = json_to_toon_optimized(data)
+            
+            with open(output_path, "w") as out_f:
+                out_f.write(toon_output)
+            
+            print(f"Successfully converted {input_path} to {output_path}")
+            
+        except json.JSONDecodeError as e:
+            print(f"Invalid JSON format: {e}")
+
+if __name__ == "__main__":
+    process_files()
